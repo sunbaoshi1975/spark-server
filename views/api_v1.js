@@ -95,15 +95,24 @@ var Api = {
 			}
 
 			var core = global.server.getCoreAttributes(coreid);
+			// SBS added 2016-08-03
+			if (settings.logDebugMessages) {
+				logger.log("debug core attributes: " + JSON.stringify(core)); }
 
+			// SBS updated 2016-08-03
 			var device = {
 				id: coreid,
 				name: (core) ? core.name : null,
-				last_app: core ? core.last_flashed_app_name : null,
-				last_heard: null
+				last_app: core ? core.last_flashed : null,
+				last_ip_address: (core) ? core.ip : null,
+				last_heard: (core) ? core.last_heard : null,
+				product_id: (core) ? core.product_id : null,
+				platform_id: (core) ? core.platform_id : null,
+				cellular: (core) ? core.cellular : null,
+				firmware_version: (core) ? core.firmware_version : null
 			};
 
-			if (utilities.check_requires_update(core, settings.cc3000_driver_version)) {
+			if (utilities.check_requires_update(core, settings.cc3000_patch_version)) {
 				device["requires_deep_update"] = true;
 			}
 
@@ -117,9 +126,22 @@ var Api = {
 		when.settle(connected_promises).then(function (descriptors) {
 			for (var i = 0; i < descriptors.length; i++) {
 				var desc = descriptors[i];
-
-				devices[i].connected = ('rejected' !== desc.state);
-				devices[i].last_heard = (desc.value) ? desc.value.lastPing : null;
+				// SBS added 2016-08-03
+				if (settings.logDebugMessages) {
+					logger.log("debug descriptors: " + JSON.stringify(desc));
+				}
+				// SBS replaced 2016-08-03
+				/// From
+				//devices[i].connected = ('rejected' !== desc.state);
+				/// To
+				if ( desc.value ) {
+					devices[i].connected = desc.value.online;
+					devices[i].last_heard = desc.value.lastPing;
+					devices[i].status = desc.value.status;
+				} else {
+					devices[i].connected = false;
+					devices[i].status = "normal";
+				}
 			}
 
 			res.json(200, devices);
@@ -158,8 +180,10 @@ var Api = {
 				//we're expecting descResult to be an array: [ sender, {} ]
 				var doc = results[0],
 					descResult = results[1],
-					coreState = null;
-
+					coreState = null,
+					coreAttributes = null;
+				if (settings.logDebugMessages) {
+					logger.log("debug descResult: " + JSON.stringify(descResult)); }
 				if (!doc || !doc.coreID) {
 					logger.error("get_core_attributes 404 error: " + JSON.stringify(doc));
 					res.json(404, "Oops, I couldn't find that core");
@@ -167,23 +191,37 @@ var Api = {
 				}
 
 				if (util.isArray(descResult) && (descResult.length > 1)) {
+					coreAttributes = descResult[1];
 					coreState = descResult[1].state || {};
 				}
 				if (!coreState) {
 					logger.error("get_core_attributes didn't get description: " + JSON.stringify(descResult));
+					// SBS added 2016-08-04, close connection
+					var coreObj = global.server.getCore(doc.coreID);
+					if (coreObj) {
+						coreObj.disconnect("socket stopped");
+					}
 				}
 
+				// SBS updated 2016-08-03
 				var device = {
 					id: doc.coreID,
 					name: doc.name || null,
 					last_app: doc.last_flashed,
-					connected: !!coreState,
+					last_ip_address: doc.ip,
+					last_heard: (coreAttributes) ? coreAttributes.lastPing : doc.last_heard,
+					product_id: doc.product_id,
+					platform_id: doc.platform_id,
+					cellular: doc.cellular,
+					firmware_version: doc.firmware_version,
+					connected: (coreAttributes) ? coreAttributes.online : false,
+					status: (coreAttributes) ? coreAttributes.status : "normal",
 					variables: (coreState) ? coreState.v : null,
 					functions: (coreState) ? coreState.f : null,
-					cc3000_patch_version: doc.cc3000_driver_version
+					cc3000_patch_version: doc.cc3000_patch_version
 				};
 
-				if (utilities.check_requires_update(doc, settings.cc3000_driver_version)) {
+				if (utilities.check_requires_update(doc, settings.cc3000_patch_version)) {
 					device["requires_deep_update"] = true;
 				}
 
@@ -204,6 +242,7 @@ var Api = {
 		var userid = Api.getUserID(req);
 
 		var promises = [];
+		that = this;
 
 		logger.log("set_core_attributes", { coreID: coreID, userID: userid.toString() });
 
@@ -212,7 +251,8 @@ var Api = {
 			logger.log("SetAttr", { coreID: coreID, userID: userid.toString(), name: coreName });
 
 			global.server.setCoreAttribute(req.coreID, "name", coreName);
-			promises.push(when.resolve({ ok: true, name: coreName }));
+			// SBS updated 2016-08-04
+			promises.push(when.resolve({ ok: true, name: coreName, id: coreID}));
 		}
 
 		var hasFiles = req.files && req.files.file;
@@ -270,7 +310,8 @@ var Api = {
 					res.json(aggregate);
 				},
 				function (err) {
-					res.json({ ok: false, errors: [err] });
+					// SBS updated 2016-08-04
+					res.json({ ok: false, errors: [err], id: that.coreID });
 				}
 			);
 		}
@@ -299,9 +340,13 @@ var Api = {
 			clearTimeout(failTimer);
 			socket.close();
 
-			logger.log("isDeviceOnline: Device service thinks it is online... ", { coreID: coreID });
+			logger.log("isDeviceOnline: Device service thinks it is online... ", {coreID: coreID});
 
-			if (msg && msg.online) {
+			// SBS replaced 2016-08-03
+			/// From
+			//if (msg && msg.online) {
+			/// To
+			if (msg ) {
 				tmp.resolve(msg);
 			}
 			else {

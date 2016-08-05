@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
 *    Copyright (C) 2013-2014 Spark Labs, Inc. All rights reserved. -  https://www.spark.io/
 *

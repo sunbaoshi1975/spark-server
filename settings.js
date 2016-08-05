@@ -23,7 +23,7 @@ module.exports = {
 	userDataDir: path.join(__dirname, "users"),
 	coreKeysDir: path.join(__dirname, "core_keys"),
 
-	coreRequestTimeout: 30000,
+	coreRequestTimeout: 5000,
 	isCoreOnlineTimeout: 2000,
 
 	coreSignalTimeout: 30000,
@@ -31,4 +31,7 @@ module.exports = {
 
 	maxHooksPerUser: 20,
 	maxHooksPerDevice: 10,
+
+	// SBS added 2016-08-03
+	logDebugMessages: true,
 };
