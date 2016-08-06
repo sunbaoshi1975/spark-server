@@ -176,7 +176,11 @@ var Api = {
 
 				if (!results || (results.length != 2)) {
 					logger.error("get_core_attributes results was the wrong length " + JSON.stringify(results));
-					res.json(404, "Oops, I couldn't find that core");
+					// SBS updated 2016-08-05
+					res.json(404, {
+						error: "Time out",
+						info: "Core has not response"
+					});
 					return;
 				}
 
@@ -190,7 +194,11 @@ var Api = {
 					logger.log("debug descResult: " + JSON.stringify(descResult)); }
 				if (!doc || !doc.coreID) {
 					logger.error("get_core_attributes 404 error: " + JSON.stringify(doc));
-					res.json(404, "Oops, I couldn't find that core");
+					// SBS updated 2016-08-05
+					res.json(404, {
+						error: "Permission Denied",
+						info: "Can't find that core"
+					});
 					return;
 				}
 
