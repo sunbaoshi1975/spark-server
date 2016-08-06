@@ -162,7 +162,11 @@ var Api = {
 				return when.resolve(global.server.getCoreAttributes(coreID));
 			},
 			function () {
-				return utilities.alwaysResolve(socket.sendAndListenForDFD(coreID, { cmd: "Describe" }, { cmd: "DescribeReturn" }));
+				// SBS updated 2016-08-05
+				return utilities.alwaysResolve(socket.sendAndListenForDFD(coreID,
+					{ cmd: "Describe" },
+					{ cmd: "DescribeReturn" },
+					settings.coreDescribeTimeout));
 			}
 		]);
 
@@ -457,6 +461,14 @@ var Api = {
 				//TODO: make me look like the spec.
 				msg.coreInfo = req.coreInfo;
 				msg.coreInfo.connected = true;
+				// SBS added 2016-08-05
+				var core = global.server.getCoreAttributes(req.coreID);
+				if (core && core.coreID) {
+					msg.coreInfo.name = core.name || null;
+					msg.coreInfo.deviceID = core.coreID;
+					msg.coreInfo.last_handshake_at = core.last_heard;
+					msg.coreInfo.last_app = core.last_flashed;
+				}
 
 				if (format && (format == "raw")) {
 					return res.send("" + msg.result);

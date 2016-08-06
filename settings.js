@@ -23,7 +23,8 @@ module.exports = {
 	userDataDir: path.join(__dirname, "users"),
 	coreKeysDir: path.join(__dirname, "core_keys"),
 
-	coreRequestTimeout: 5000,
+	coreRequestTimeout: 15000,
+	coreDescribeTimeout: 5000,
 	isCoreOnlineTimeout: 2000,
 
 	coreSignalTimeout: 30000,
